@@ -1,11 +1,30 @@
+#-*- coding: utf-8 -*-
 from AdvancedHTMLParser import AdvancedHTMLParser
 import re
+import sys
+import unicodedata
+import codecs
+
+class myClass:
+    data = []
+    def __init__(self, data):
+        self.data = data
+
+def normaliseData(my_list):
+    newlist = list()
+    for i in my_list:
+        newlist.append(unicodedata.normalize('NFKC', i))
+    return newlist
+
+
+print (sys.stdout.encoding)
 
 parser = AdvancedHTMLParser()
 
-parser.parseFile('Parsers1/cazyhtml1.txt')
+parser.parseFile('cazyhtml1.txt')
 protein_list = list()
 tax_list = list()
+truncated_row = list()
 
 new_file = open('ParsedResults.txt', 'w')
 
@@ -29,16 +48,16 @@ for row in row_list:
 
         current_row = re.findall(regex,row.innerHTML.strip())
 
-        truncated_row = [ i for i in current_row if len(i) > 2]
-
-        tax_list.append(truncated_row)
+        tax_list.append(normaliseData(current_row))
 
 
 
 
-for item in tax_list:
-    for dif_row in new_list:
-        if dif_row[0] == item[0] and dif_row[1] == item[1]:
 
-    new_file.write("%s\n" % item)
+        #print(tax_list)
+
+print(tax_list)
+
+#for item in tax_list:
+    #new_file.write("%s\n" % item)
 
