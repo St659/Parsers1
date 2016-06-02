@@ -1,5 +1,6 @@
 #-*- coding: utf-8 -*-
 from AdvancedHTMLParser import AdvancedHTMLParser
+from Bio import Entrez,SeqIO
 import re
 import sys
 import unicodedata
@@ -56,7 +57,7 @@ print (sys.stdout.encoding)
 
 parser = AdvancedHTMLParser()
 
-parser.parseFile('cazyhtml1.txt')
+parser.parseFile('Parsers1/cazyhtml1.txt')
 protein_list = list()
 tax_list = list()
 truncated_row = list()
@@ -106,7 +107,24 @@ highest_strains =[]
 for species in species_list:
     highest_strains.append(get_highest_strain(tax_list, species))
 
-print(len(tax_list))
-print(highest_strains)
+#print(len(tax_list))
+#print(highest_strains)
+accessions =[]
+for strain in highest_strains:
+
+    if len(strain) >0:
+        for enzyme in strain:
+            accessions.append(enzyme[2])
 
 
+accession = " ".join([accessions[0],accessions[1],accessions[2]])
+print(accession)
+Entrez.email = "st659@york.ac.uk"
+handle = Entrez.efetch(db="protein", id=accession,rettype="fasta", retmode="text")
+for rec in handle:
+    record = SeqIO.read(rec, "fasta")
+    print(record)
+
+handle.close()
+
+print(record)
