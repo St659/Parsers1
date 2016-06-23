@@ -5,6 +5,7 @@ import re
 import sys
 import unicodedata
 from collections import Counter
+import urllib.request
 
 import codecs
 
@@ -56,6 +57,10 @@ def get_highest_strain(data_list, species):
 print (sys.stdout.encoding)
 
 parser = AdvancedHTMLParser()
+
+with urllib.request.urlopen('http://python.org/') as response:
+   html = response.read()
+
 
 parser.parseFile('Parsers1/cazyhtml1.txt')
 protein_list = list()
@@ -117,14 +122,31 @@ for strain in highest_strains:
             accessions.append(enzyme[2])
 
 
-accession = " ".join([accessions[0],accessions[1],accessions[2]])
+accession = " ".join(accessions)
 print(accession)
 Entrez.email = "st659@york.ac.uk"
-handle = Entrez.efetch(db="protein", id=accession,rettype="fasta", retmode="text")
-for rec in handle:
-    record = SeqIO.read(rec, "fasta")
-    print(record)
 
-handle.close()
 
-print(record)
+handle = Entrez.esearch(db="protein",term=accession, retmode="xml", usehistory='y')
+results = Entrez.read(handle)
+idList = results["IdList"]
+
+webEnv = results["WebEnv"]
+queryKey = results["QueryKey"]
+
+
+batch_size =100
+resultsList = []
+for start in range(0, len(accessions), batch_size):
+    resultsList.append(Entrez.efetch(db="protein", rettype="fasta", retstart=start, retmax=batch_size, webenv=webEnv, query_key=queryKey))
+
+
+fasta = 0
+resultsFile = open("resultsFile1.fasta", 'w')
+for result in resultsList:
+    resultsFile.write(result.read())
+    fasta += 1
+
+print('Fasta files received: ' + str(fasta))
+
+

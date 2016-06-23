@@ -9,7 +9,7 @@ def calculate_primer_melting_temp(primer):
             temp += 2
     return temp
 
-reverse = 'tctgaagtgatgcttgtctg'
+reverse = 'gttcacgctctgaaaggctc'
 forward = 'ggcctgttttgctatctgtc'
 
 reverse_temp = calculate_primer_melting_temp(reverse)
