@@ -34,11 +34,7 @@ def get_highest_strain(data_list, species):
     if len(counter.most_common(1)) > 0:
         most = counter.most_common(1)[0]
     else:
-        print("ERROR HERE")
         print(strain_list)
-
-        print("ERROR HERE")
-        print(counter)
 
     highest_strain_enz = []
 
@@ -46,107 +42,94 @@ def get_highest_strain(data_list, species):
         if re.match(most[0],strain[1]):
             highest_strain_enz.append(strain)
 
-
-    #print(most[0])
-    #print(strain_list)
-    #print(highest_strain_enz)
     return highest_strain_enz
 
 
+def get_fasta(url, resultsFile):
+    parser = AdvancedHTMLParser()
 
-print (sys.stdout.encoding)
-
-parser = AdvancedHTMLParser()
-
-with urllib.request.urlopen('http://python.org/') as response:
-   html = response.read()
+    with urllib.request.urlopen(url) as response:
+        html = response.read()
 
 
-parser.parseFile('Parsers1/cazyhtml1.txt')
-protein_list = list()
-tax_list = list()
-truncated_row = list()
+    parser.parseStr(html)
+    protein_list = list()
+    tax_list = list()
+    truncated_row = list()
 
-new_file = open('ParsedResults.txt', 'w')
+    linktag_list = parser.getElementsByTagName('a')
 
-#print(parser.getHTML())
+    row_list = parser.getElementsByTagName('tr')
 
-linktag_list = parser.getElementsByTagName('a')
+    proteinID = re.compile(r"\w{3}\d{5}.\d{1}")
 
-row_list = parser.getElementsByTagName('tr')
+    regex = re.compile(r'\>(.*?)\<')
 
-proteinID = re.compile(r"\w{3}\d{5}.\d{1}")
+    for row in row_list:
+        if re.search("separateur2", row.innerHTML.strip()):
 
-regex = re.compile(r'\>(.*?)\<')
-
-for row in row_list:
-    if re.search("separateur2", row.innerHTML.strip()):
-
-        current_row = re.findall(regex,row.innerHTML.strip())
-        tax_list.append(normaliseData(current_row))
+            current_row = re.findall(regex,row.innerHTML.strip())
+            tax_list.append(normaliseData(current_row))
 
 
-species_list = list()
-for item in tax_list:
+    species_list = list()
+    for item in tax_list:
 
 
-    split_string = item[1].split(' ',2)
+        split_string = item[1].split(' ',2)
 
-    if len(split_string) > 1:
-        species_string = split_string[0] + " " + split_string[1]
-    else:
-        species_string = split_string
+        if len(split_string) > 1:
+            species_string = split_string[0] + " " + split_string[1]
+        else:
+            species_string = split_string
 
-    if species_string not in species_list:
-        species_string = species_string.replace("[", " ")
-        species_string = species_string.replace("]", " ")
-        species_list.append(species_string)
-        #print(species_string)
-    #new_file.write("%s\n" % item)
+        if species_string not in species_list:
+            species_string = species_string.replace("[", " ")
+            species_string = species_string.replace("]", " ")
+            species_list.append(species_string)
 
 
 
-strain_sorted_list = list()
-highest_strains =[]
 
-for species in species_list:
-    highest_strains.append(get_highest_strain(tax_list, species))
+    strain_sorted_list = list()
+    highest_strains =[]
 
-#print(len(tax_list))
-#print(highest_strains)
-accessions =[]
-for strain in highest_strains:
+    for species in species_list:
+        highest_strains.append(get_highest_strain(tax_list, species))
 
-    if len(strain) >0:
-        for enzyme in strain:
-            accessions.append(enzyme[2])
+    accessions =[]
+    for strain in highest_strains:
 
-
-accession = " ".join(accessions)
-print(accession)
-Entrez.email = "st659@york.ac.uk"
+        if len(strain) >0:
+            for enzyme in strain:
+                accessions.append(enzyme[2])
 
 
-handle = Entrez.esearch(db="protein",term=accession, retmode="xml", usehistory='y')
-results = Entrez.read(handle)
-idList = results["IdList"]
-
-webEnv = results["WebEnv"]
-queryKey = results["QueryKey"]
+    accession = " ".join(accessions)
+    print(accession)
+    Entrez.email = "st659@york.ac.uk"
 
 
-batch_size =100
-resultsList = []
-for start in range(0, len(accessions), batch_size):
-    resultsList.append(Entrez.efetch(db="protein", rettype="fasta", retstart=start, retmax=batch_size, webenv=webEnv, query_key=queryKey))
+    handle = Entrez.esearch(db="protein",term=accession, retmode="xml", usehistory='y')
+    results = Entrez.read(handle)
+    idList = results["IdList"]
+
+    webEnv = results["WebEnv"]
+    queryKey = results["QueryKey"]
 
 
-fasta = 0
-resultsFile = open("resultsFile1.fasta", 'w')
-for result in resultsList:
-    resultsFile.write(result.read())
-    fasta += 1
+    batch_size =100
+    resultsList = []
+    for start in range(0, len(accessions), batch_size):
+        resultsList.append(Entrez.efetch(db="protein", rettype="fasta", retstart=start, retmax=batch_size, webenv=webEnv, query_key=queryKey))
 
-print('Fasta files received: ' + str(fasta))
+
+    fasta = 0
+    resultsFile = open(resultsFile, 'w')
+    for result in resultsList:
+        resultsFile.write(result.read())
+        fasta += 1
+
+    print('Fasta files received: ' + str(fasta))
 
 
