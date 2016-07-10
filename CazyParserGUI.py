@@ -8,9 +8,9 @@ def parse_input(event):
     progress_bar.grid(row=3, column=0, columnspan=2)
     progress_bar.start()
     filename = fileEntry.get() + ".fasta"
-    #t = Thread(target=get_fasta, args=(urlEntry.get(), fileEntry.get()))
-    #t.start()
-    #window.after(1000, check_thread, t)
+    t = Thread(target=get_fasta, args=(urlEntry.get(), filename))
+    t.start()
+    window.after(1000, check_thread, t)
 
 
 def check_thread(thread):

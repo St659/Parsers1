@@ -6,9 +6,21 @@ import sys
 import unicodedata
 from collections import Counter
 import urllib.request
+import unittest
+import itertools
 
 import codecs
 
+
+class ParserTests(unittest.TestCase):
+
+    def test_url_split(self):
+        url_string = "http://www.cazy.org/GH33_bacteria.html,http://www.cazy.org/GH33_bacteria.html?debut_PRINC=1000#pagination_PRINC"
+        self.assertEqual(len(split_url(url_string)), 2)
+
+
+def split_url(urlString):
+    return urlString.split(",")
 
 
 def normaliseData(my_list):
@@ -45,38 +57,60 @@ def get_highest_strain(data_list, species):
     return highest_strain_enz
 
 
-def get_fasta(url, resultsFile):
+def get_fasta(urlInput, resultsFile):
     parser = AdvancedHTMLParser()
 
-    with urllib.request.urlopen(url) as response:
-        html = response.read()
+    urls = split_url(urlInput)
+    print(urls)
+    nested_species_list = []
+    nested_tax_list = []
+    for url in urls:
+        with urllib.request.urlopen(url) as response:
+            html = response.read()
+
+        parser.parseStr(html)
+        row_list = parser.getElementsByTagName('tr')
+
+        tax= get_tax_list(row_list)
+
+        nested_species_list.append(get_species_list(tax))
+        nested_tax_list.append(tax)
 
 
-    parser.parseStr(html)
-    protein_list = list()
+    species_list = list(itertools.chain.from_iterable(nested_species_list))
+    tax_list = list(itertools.chain.from_iterable(nested_tax_list))
+    highest_strains = []
+    print(len(species_list))
+    for species in species_list:
+        highest_strains.append(get_highest_strain(tax_list, species))
+    print(highest_strains)
+
+    accessions = []
+    for strain in highest_strains:
+
+        if len(strain) >0:
+            for enzyme in strain:
+                accessions.append(enzyme[2])
+    entrez_get_fasta(accessions, resultsFile)
+
+
+def get_tax_list(html_row_list):
+
     tax_list = list()
-    truncated_row = list()
-
-    linktag_list = parser.getElementsByTagName('a')
-
-    row_list = parser.getElementsByTagName('tr')
-
-    proteinID = re.compile(r"\w{3}\d{5}.\d{1}")
 
     regex = re.compile(r'\>(.*?)\<')
 
-    for row in row_list:
+    for row in html_row_list:
         if re.search("separateur2", row.innerHTML.strip()):
-
-            current_row = re.findall(regex,row.innerHTML.strip())
+            current_row = re.findall(regex, row.innerHTML.strip())
             tax_list.append(normaliseData(current_row))
+    return tax_list
 
-
+def get_species_list(tax_list):
     species_list = list()
     for item in tax_list:
 
-
-        split_string = item[1].split(' ',2)
+        split_string = item[1].split(' ', 2)
 
         if len(split_string) > 1:
             species_string = split_string[0] + " " + split_string[1]
@@ -87,42 +121,26 @@ def get_fasta(url, resultsFile):
             species_string = species_string.replace("[", " ")
             species_string = species_string.replace("]", " ")
             species_list.append(species_string)
+    return species_list
 
 
-
-
-    strain_sorted_list = list()
-    highest_strains =[]
-
-    for species in species_list:
-        highest_strains.append(get_highest_strain(tax_list, species))
-
-    accessions =[]
-    for strain in highest_strains:
-
-        if len(strain) >0:
-            for enzyme in strain:
-                accessions.append(enzyme[2])
-
-
+def entrez_get_fasta(accessions, resultsFile):
     accession = " ".join(accessions)
-    print(accession)
     Entrez.email = "st659@york.ac.uk"
-
-
-    handle = Entrez.esearch(db="protein",term=accession, retmode="xml", usehistory='y')
+    print(accession)
+    handle = Entrez.esearch(db="protein", term=accession, retmode="xml", usehistory='y')
     results = Entrez.read(handle)
     idList = results["IdList"]
 
     webEnv = results["WebEnv"]
     queryKey = results["QueryKey"]
 
-
-    batch_size =100
+    batch_size = 100
     resultsList = []
     for start in range(0, len(accessions), batch_size):
-        resultsList.append(Entrez.efetch(db="protein", rettype="fasta", retstart=start, retmax=batch_size, webenv=webEnv, query_key=queryKey))
-
+        resultsList.append(
+            Entrez.efetch(db="protein", rettype="fasta", retstart=start, retmax=batch_size, webenv=webEnv,
+                          query_key=queryKey))
 
     fasta = 0
     resultsFile = open(resultsFile, 'w')
@@ -133,3 +151,6 @@ def get_fasta(url, resultsFile):
     print('Fasta files received: ' + str(fasta))
 
 
+
+if __name__ == '__main__':
+    unittest.main()
