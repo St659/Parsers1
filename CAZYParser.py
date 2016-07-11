@@ -18,6 +18,18 @@ class ParserTests(unittest.TestCase):
         url_string = "http://www.cazy.org/GH33_bacteria.html,http://www.cazy.org/GH33_bacteria.html?debut_PRINC=1000#pagination_PRINC"
         self.assertEqual(len(split_url(url_string)), 2)
 
+    def test_search_name(self):
+        test_tax_list = [[' neuraminidase', 'Acidobacteria bacterium DSM 100886', 'AMY11745.1'], [' neuraminidase', 'Acidobacteria bacterium DSM 100886', 'AMY11757.1'], [' ABSDF1049 (fragment)', 'Acinetobacter baumannii', 'CAP00401.1'], [' ABSDF0702 (fragment)', 'Acinetobacter baumannii', 'CAP00078.1'], [' BJAB0715_02370', 'Acinetobacter baumannii BJAB0715', 'AGQ07016.1'], [' IOMTU433_1027', 'Acinetobacter baumannii IOMTU 433', 'BAP65815.1'], [' ABZJ_02864', 'Acinetobacter baumannii MDR-ZJ06', 'AEP07324.1'], [' ABTW07_1207', 'Acinetobacter baumannii TCDC-AB0715', 'ADX91636.1', 'ADX92148.1'], [' ABTW07_3055', 'Acinetobacter baumannii TCDC-AB0715', 'ADX93478.1'], [' AZE33_12470', 'Acinetobacter baumannii XH858', 'AMN01984.1'], [' Asuc_1960', 'Actinobacillus succinogenes 130Z', 'ABR75307.1', 'A6VQR0']]
+        self.assertEqual(len(search_name(test_tax_list,'Acidobacteria bacterium')), 2)
+
+
+def search_name(tax_list, name):
+    search_result_list = []
+    for tax in tax_list:
+        for string in tax:
+            if re.match(name, str(string)):
+                search_result_list.append(tax)
+    return search_result_list
 
 def split_url(urlString):
     return urlString.split(",")
@@ -57,7 +69,7 @@ def get_highest_strain(data_list, species):
     return highest_strain_enz
 
 
-def get_fasta(urlInput, resultsFile):
+def get_fasta(urlInput, resultsFile, search_string, reduce):
     parser = AdvancedHTMLParser()
 
     urls = split_url(urlInput)
@@ -80,18 +92,29 @@ def get_fasta(urlInput, resultsFile):
     species_list = list(itertools.chain.from_iterable(nested_species_list))
     tax_list = list(itertools.chain.from_iterable(nested_tax_list))
     highest_strains = []
-    print(len(species_list))
-    for species in species_list:
-        highest_strains.append(get_highest_strain(tax_list, species))
-    print(highest_strains)
+
+    if search_string:
+        highest_strains.append(search_name(tax_list, search_string))
+    elif reduce == 1:
+        for species in species_list:
+            highest_strains.append(get_highest_strain(tax_list, species))
+    else:
+        highest_strains = tax_list
 
     accessions = []
     for strain in highest_strains:
-
+        print(strain)
         if len(strain) >0:
             for enzyme in strain:
                 accessions.append(enzyme[2])
-    entrez_get_fasta(accessions, resultsFile)
+    print(len(accessions))
+    #entrez_get_fasta(accessions, resultsFile)
+    del accessions[:]
+    del tax_list[:]
+    del species_list [:]
+    del highest_strains[:]
+    del nested_species_list[:]
+    del nested_tax_list[:]
 
 
 def get_tax_list(html_row_list):
